@@ -1,0 +1,257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - handles drivers, hosts, and admins
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  role      UserRole @default(DRIVER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Profile information
+  profileImage String?
+  dateOfBirth  DateTime?
+  address      String?
+  city         String?
+  postcode     String?
+
+  // Verification status
+  isEmailVerified Boolean @default(false)
+  isPhoneVerified Boolean @default(false)
+
+  // Relations
+  bookings      Booking[]      @relation("UserBookings")
+  parkingSpaces ParkingSpace[] @relation("SpaceOwner")
+  reviews       Review[]       @relation("ReviewAuthor")
+  payments      Payment[]      @relation("UserPayments")
+  notifications Notification[] @relation("UserNotifications")
+
+  @@map("users")
+}
+
+// Enum for user roles
+enum UserRole {
+  DRIVER
+  HOST
+  ADMIN
+}
+
+// Parking space model - represents available parking spots
+model ParkingSpace {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  address     String
+  city        String
+  postcode    String
+  latitude    Float
+  longitude   Float
+  type        SpaceType
+  price       Float // Price per hour in pounds
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Space details
+  maxHeight   Float? // Maximum vehicle height in meters
+  maxWidth    Float? // Maximum vehicle width in meters
+  maxLength   Float? // Maximum vehicle length in meters
+  
+  // Features
+  isCovered      Boolean @default(false)
+  hasEVCharging  Boolean @default(false)
+  hasCCTV        Boolean @default(false)
+  has24Access    Boolean @default(false)
+  hasDisabledAccess Boolean @default(false)
+
+  // Access instructions
+  accessInstructions String?
+  
+  // Owner information
+  ownerId String
+  owner   User   @relation("SpaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  images       SpaceImage[]   @relation("SpaceImages")
+  bookings     Booking[]      @relation("SpaceBookings")
+  reviews      Review[]       @relation("SpaceReviews")
+  availability Availability[] @relation("SpaceAvailability")
+
+  @@map("parking_spaces")
+}
+
+// Enum for parking space types
+enum SpaceType {
+  DRIVEWAY
+  GARAGE
+  CAR_PARK
+  STREET_PARKING
+  COMMERCIAL_LOT
+}
+
+// Space images model - stores multiple images per parking space
+model SpaceImage {
+  id      String @id @default(uuid())
+  url     String
+  caption String?
+  order   Int    @default(0)
+
+  // Relations
+  spaceId String
+  space   ParkingSpace @relation("SpaceImages", fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("space_images")
+}
+
+// Availability model - defines when spaces are available
+model Availability {
+  id        String   @id @default(uuid())
+  dayOfWeek Int // 0 = Sunday, 1 = Monday, etc.
+  startTime String // Format: "HH:MM"
+  endTime   String // Format: "HH:MM"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // Relations
+  spaceId String
+  space   ParkingSpace @relation("SpaceAvailability", fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@map("availability")
+}
+
+// Booking model - represents parking reservations
+model Booking {
+  id        String        @id @default(uuid())
+  startTime DateTime
+  endTime   DateTime
+  totalCost Float
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Vehicle information
+  vehicleReg    String
+  vehicleMake   String?
+  vehicleModel  String?
+  vehicleColor  String?
+
+  // Special requirements
+  specialRequests String?
+
+  // Relations
+  userId  String
+  user    User         @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  spaceId String
+  space   ParkingSpace @relation("SpaceBookings", fields: [spaceId], references: [id], onDelete: Cascade)
+  payment Payment?     @relation("BookingPayment")
+  review  Review?      @relation("BookingReview")
+
+  @@map("bookings")
+}
+
+// Enum for booking status
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+// Payment model - handles all payment transactions
+model Payment {
+  id              String        @id @default(uuid())
+  amount          Float
+  currency        String        @default("GBP")
+  status          PaymentStatus @default(PENDING)
+  stripePaymentId String?       @unique
+  refundAmount    Float?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Payment method information
+  paymentMethod String? // card, apple_pay, google_pay
+  last4         String? // Last 4 digits of card
+  brand         String? // visa, mastercard, etc.
+
+  // Relations
+  userId    String
+  user      User     @relation("UserPayments", fields: [userId], references: [id], onDelete: Cascade)
+  bookingId String   @unique
+  booking   Booking  @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+// Enum for payment status
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+// Review model - user reviews for parking spaces
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int // 1-5 stars
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId    String
+  user      User         @relation("ReviewAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  spaceId   String
+  space     ParkingSpace @relation("SpaceReviews", fields: [spaceId], references: [id], onDelete: Cascade)
+  bookingId String       @unique
+  booking   Booking      @relation("BookingReview", fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("reviews")
+}
+
+// Notification model - system notifications for users
+model Notification {
+  id        String           @id @default(uuid())
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Enum for notification types
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  REVIEW_RECEIVED
+  SPACE_BOOKED
+  REMINDER
+  SYSTEM
+}
