@@ -40,6 +40,7 @@ model User {
   reviews       Review[]       @relation("ReviewAuthor")
   payments      Payment[]      @relation("UserPayments")
   notifications Notification[] @relation("UserNotifications")
+  errorLogs     ErrorLog[]     @relation("UserErrors")
 
   @@map("users")
 }
@@ -271,4 +272,36 @@ enum NotificationType {
   SPACE_BOOKED
   REMINDER
   SYSTEM
+}
+
+// Error Log model - stores application errors for monitoring and debugging
+model ErrorLog {
+  id        String        @id @default(uuid())
+  message   String
+  stack     String?
+  url       String?
+  userAgent String?
+  severity  ErrorSeverity @default(ERROR)
+  metadata  String? // JSON string for additional error context
+  resolved  Boolean       @default(false)
+  timestamp DateTime      @default(now())
+  
+  // Resolution tracking
+  resolvedAt      DateTime?
+  resolvedBy      String?
+  resolutionNotes String?
+
+  // Relations
+  userId String?
+  user   User?   @relation("UserErrors", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("error_logs")
+}
+
+// Enum for error severity levels
+enum ErrorSeverity {
+  CRITICAL
+  ERROR
+  WARNING
+  INFO
 }
