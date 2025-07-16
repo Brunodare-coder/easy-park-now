@@ -233,6 +233,15 @@
 
 /* Utility classes */
 @layer utilities {
+  /* Custom ring utilities for focus states */
+  .ring-ring {
+    --tw-ring-color: rgb(var(--color-primary-dark));
+  }
+  
+  .ring-offset-background {
+    --tw-ring-offset-color: rgb(255 255 255);
+  }
+  
   /* Text utilities */
   .text-balance {
     text-wrap: balance;
