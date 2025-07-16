@@ -118,6 +118,23 @@ model SpaceImage {
   @@map("space_images")
 }
 
+// Council parking spaces model
+model CouncilParkingSpace {
+  id          String   @id @default(uuid())
+  street      String
+  area        String
+  code        String   @unique
+  description String?
+  latitude    Float
+  longitude   Float
+  pricePerHour Float
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("council_parking_spaces")
+}
+
 // Availability model - defines when spaces are available
 model Availability {
   id        String   @id @default(uuid())
