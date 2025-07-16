@@ -13,24 +13,25 @@
  * - Rate limiting and security middleware
  */
 
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
 
-// Import custom middleware and routes
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
-/* const userRoutes = require('./routes/users'); */
+// const userRoutes = require('./routes/users'); // Uncomment if user routes are needed
 const spaceRoutes = require('./routes/spaces');
 const bookingRoutes = require('./routes/bookings');
 const paymentRoutes = require('./routes/payments');
 const councilSpacesRoutes = require('./routes/councilSpaces');
-/* const adminRoutes = require('./routes/admin'); */
+// const adminRoutes = require('./routes/admin'); // Uncomment if admin routes are needed
+const errorLogsRouter = require('./routes/errorLogs');
+const stripeWebhookHandler = require('./routes/stripeWebhook');
 
 // Initialize Express app
 const app = express();
@@ -61,7 +62,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100,
   message: {
     error: 'Too many requests from this IP, please try again later.',
@@ -74,7 +75,7 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: {
     error: 'Too many authentication attempts, please try again later.',
@@ -94,17 +95,16 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authLimiter, authRoutes);
-/* app.use('/api/users', authMiddleware, userRoutes); */
+// app.use('/api/users', authMiddleware, userRoutes); // Uncomment if user routes are needed
 app.use('/api/spaces', spaceRoutes);
 app.use('/api/bookings', authMiddleware, bookingRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/council-spaces', councilSpacesRoutes);
-app.use('/api/error-logs', require('./routes/errorLogs'));
-/* app.use('/api/admin', authMiddleware, adminRoutes); */
+app.use('/api/error-logs', errorLogsRouter);
+// app.use('/api/admin', authMiddleware, adminRoutes); // Uncomment if admin routes are needed
 
 // Stripe webhook handler (must be before other payment routes to handle raw body)
-const stripeWebhookHandler = require('./routes/stripeWebhook');
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
 // 404 handler
 app.use('*', (req, res) => {
