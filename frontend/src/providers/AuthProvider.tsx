@@ -16,6 +16,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { setErrorLoggerToken, logError } from '@/utils/errorLogger';
 
 // Types
 interface User {
@@ -95,6 +96,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
           
+          // Set token for error logger
+          setErrorLoggerToken(storedToken);
+          
           // Verify token is still valid
           await verifyToken(storedToken);
         }
@@ -172,6 +176,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(userData);
         setToken(authToken);
         
+        // Set token for error logger
+        setErrorLoggerToken(authToken);
+        
         // Persist to localStorage
         localStorage.setItem('auth_token', authToken);
         localStorage.setItem('auth_user', JSON.stringify(userData));
@@ -217,6 +224,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Update state
         setUser(newUser);
         setToken(authToken);
+        
+        // Set token for error logger
+        setErrorLoggerToken(authToken);
         
         // Persist to localStorage
         localStorage.setItem('auth_token', authToken);
