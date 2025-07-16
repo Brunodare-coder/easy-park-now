@@ -99,11 +99,11 @@ app.use('/api/spaces', spaceRoutes);
 app.use('/api/bookings', authMiddleware, bookingRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
 app.use('/api/council-spaces', councilSpacesRoutes);
+app.use('/api/error-logs', require('./routes/errorLogs'));
 /* app.use('/api/admin', authMiddleware, adminRoutes); */
 
-const stripeWebhookHandler = require('./routes/stripeWebhook').router || require('./routes/stripeWebhook');
-
-app.use('/api/payments', authMiddleware, require('./routes/payments'));
+// Stripe webhook handler (must be before other payment routes to handle raw body)
+const stripeWebhookHandler = require('./routes/stripeWebhook');
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
 // 404 handler
