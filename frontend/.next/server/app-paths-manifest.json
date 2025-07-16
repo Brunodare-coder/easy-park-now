@@ -1,0 +1,10 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/login/page": "app/login/page.js",
+  "/admin/error-dashboard/page": "app/admin/error-dashboard/page.js",
+  "/reset-password/page": "app/reset-password/page.js",
+  "/council-parking/page": "app/council-parking/page.js",
+  "/signup/page": "app/signup/page.js",
+  "/page": "app/page.js"
+}
