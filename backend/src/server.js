@@ -29,19 +29,19 @@ const authRoutes = require('./routes/auth');
 const spaceRoutes = require('./routes/spaces');
 const bookingRoutes = require('./routes/bookings');
 const paymentRoutes = require('./routes/payments');
-const adminRoutes = require('./routes/admin');
+const councilSpacesRoutes = require('./routes/councilSpaces');
+/* const adminRoutes = require('./routes/admin'); */
 
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Security middleware
-// Helmet helps secure Express apps by setting various HTTP headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// CORS configuration - allows frontend to communicate with backend
+// CORS configuration
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
@@ -49,42 +49,40 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Compression middleware - reduces response size
+// Compression middleware
 app.use(compression());
 
-// Request logging middleware - logs all HTTP requests
+// Request logging middleware
 app.use(morgan('combined'));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parse URL-encoded bodies
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting - prevents abuse by limiting requests per IP
+// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     error: 'Too many requests from this IP, please try again later.',
     retryAfter: '15 minutes'
   },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Apply rate limiting to all requests
 app.use('/api/', limiter);
 
-// Stricter rate limiting for authentication endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 auth requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: {
     error: 'Too many authentication attempts, please try again later.',
     retryAfter: '15 minutes'
   }
 });
 
-// Health check endpoint - useful for monitoring and load balancers
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -95,19 +93,20 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-// All API routes are prefixed with /api for better organization
 app.use('/api/auth', authLimiter, authRoutes);
 /* app.use('/api/users', authMiddleware, userRoutes); */
 app.use('/api/spaces', spaceRoutes);
 app.use('/api/bookings', authMiddleware, bookingRoutes);
 app.use('/api/payments', authMiddleware, paymentRoutes);
-app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/council-spaces', councilSpacesRoutes);
+/* app.use('/api/admin', authMiddleware, adminRoutes); */
 
-// Stripe webhook endpoint (must be before body parsing middleware)
-// This endpoint receives webhook events from Stripe for payment processing
-app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), paymentRoutes);
+const stripeWebhookHandler = require('./routes/stripeWebhook').router || require('./routes/stripeWebhook');
 
-// 404 handler for undefined routes
+app.use('/api/payments', authMiddleware, require('./routes/payments'));
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
+// 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -117,10 +116,9 @@ app.use('*', (req, res) => {
 });
 
 // Global error handling middleware
-// This catches all errors and sends a consistent error response
 app.use(errorHandler);
 
-// Graceful shutdown handling
+// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received. Shutting down gracefully...');
   process.exit(0);
@@ -131,7 +129,7 @@ process.on('SIGINT', () => {
   process.exit(0);
 });
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
   console.log(`
 🚀 EasyParkNow Backend Server Started!
@@ -143,5 +141,4 @@ app.listen(PORT, () => {
   `);
 });
 
-// Export app for testing purposes
 module.exports = app;
