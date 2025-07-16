@@ -2,10 +2,14 @@
  * Root Layout Component
  * 
  * This is the root layout for the EasyParkNow Next.js application.
- * It wraps all pages and provides global styles and basic structure.
+ * It wraps all pages and provides global styles, providers, and basic structure.
  */
 
 import './globals.css';
+import { AuthProvider } from '@/providers/AuthProvider';
+import { ToastProvider } from '@/providers/ToastProvider';
+import { LoadingProvider } from '@/providers/LoadingProvider';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Metadata for SEO and social sharing
 export const metadata = {
@@ -31,8 +35,10 @@ export const metadata = {
  * 
  * This component wraps all pages in the application and provides:
  * - Global styles and fonts
+ * - Context providers (Auth, Toast, Loading)
+ * - Error boundary for error handling
  * - Common HTML structure
- * - Basic layout structure
+ * - Accessibility features
  */
 export default function RootLayout({
   children,
@@ -65,10 +71,20 @@ export default function RootLayout({
           Skip to main content
         </a>
         
-        {/* Main application content */}
-        <div id="main-content" className="min-h-screen flex flex-col">
-          {children}
-        </div>
+        {/* Error Boundary to catch React errors */}
+        <ErrorBoundary>
+          {/* Context Providers */}
+          <AuthProvider>
+            <LoadingProvider>
+              <ToastProvider>
+                {/* Main application content */}
+                <div id="main-content" className="min-h-screen flex flex-col">
+                  {children}
+                </div>
+              </ToastProvider>
+            </LoadingProvider>
+          </AuthProvider>
+        </ErrorBoundary>
         
         {/* Portal for modals and overlays */}
         <div id="modal-root" />
