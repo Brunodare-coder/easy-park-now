@@ -50,8 +50,6 @@ const nextConfig = {
   
   // Experimental features
   experimental: {
-    // Enable app directory (Next.js 13+)
-    appDir: true,
     // Enable server components
     serverComponentsExternalPackages: ['@prisma/client'],
   },
