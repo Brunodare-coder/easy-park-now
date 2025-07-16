@@ -3,12 +3,32 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
+// Types
+interface CouncilParkingSpace {
+  id: string;
+  street: string;
+  area: string;
+  code: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  pricePerHour: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SearchParams {
+  street: string;
+  area: string;
+}
+
 export default function CouncilParkingPage() {
-  const [searchParams, setSearchParams] = useState({ street: '', area: '' });
-  const [spaces, setSpaces] = useState([]);
+  const [searchParams, setSearchParams] = useState<SearchParams>({ street: '', area: '' });
+  const [spaces, setSpaces] = useState<CouncilParkingSpace[]>([]);
   const [code, setCode] = useState('');
   const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [selectedSpace, setSelectedSpace] = useState(null);
+  const [selectedSpace, setSelectedSpace] = useState<CouncilParkingSpace | null>(null);
   const [error, setError] = useState('');
 
   const handleSearch = async () => {
