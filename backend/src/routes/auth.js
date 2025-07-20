@@ -17,7 +17,7 @@ const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
 const Joi = require('joi');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { authMiddleware } = require('../middleware/auth');
+const authMiddleware = require('../middleware/auth');
 const { sendEmail } = require('../services/emailService');
 
 const router = express.Router();
@@ -78,27 +78,103 @@ const resetPasswordSchema = Joi.object({
   })
 });
 
-/**
- * Helper function to generate JWT token
- */
-const generateToken = (userId, role) => {
+function generateToken(userId, role) {
   return jwt.sign(
     { userId, role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
-};
+}
 
-/**
- * Helper function to generate verification token
- */
-const generateVerificationToken = () => {
+function generateVerificationToken() {
   return jwt.sign(
     { purpose: 'email_verification', timestamp: Date.now() },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
   );
-};
+}
+
+/**
+ * POST /api/auth/register
+ * Register a new user account
+ */
+router.post('/register', asyncHandler(async (req, res) => {
+  // Validate request body
+  const { error, value } = registerSchema.validate(req.body);
+  if (error) {
+    throw new AppError(error.details[0].message, 400, 'VALIDATION_ERROR');
+  }
+
+  const { email, password, firstName, lastName, phone, role } = value;
+
+  // Check if user already exists
+  const existingUser  = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() }
+  });
+
+  if (existingUser ) {
+    throw new AppError('User  with this email already exists', 409, 'USER_EXISTS');
+  }
+
+  // Hash password
+  const saltRounds = 12;
+  const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+  // Create user
+  const user = await prisma.user.create({
+    data: {
+      email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required'
+  }),
+  password: Joi.string().min(8).pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])')).required().messages({
+    'string.min': 'Password must be at least 8 characters long',
+    'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+    'any.required': 'Password is required'
+  }),
+  firstName: Joi.string().min(2).max(50).required().messages({
+    'string.min': 'First name must be at least 2 characters long',
+    'string.max': 'First name cannot exceed 50 characters',
+    'any.required': 'First name is required'
+  }),
+  lastName: Joi.string().min(2).max(50).required().messages({
+    'string.min': 'Last name must be at least 2 characters long',
+    'string.max': 'Last name cannot exceed 50 characters',
+    'any.required': 'Last name is required'
+  }),
+  phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).optional().messages({
+    'string.pattern.base': 'Please provide a valid phone number'
+  }),
+  role: Joi.string().valid('DRIVER', 'HOST').default('DRIVER')
+});
+
+const loginSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required'
+  }),
+  password: Joi.string().required().messages({
+    'any.required': 'Password is required'
+  })
+});
+
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().required().messages({
+    'string.email': 'Please provide a valid email address',
+    'any.required': 'Email is required'
+  })
+});
+
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().required().messages({
+    'any.required': 'Reset token is required'
+  }),
+  password: Joi.string().min(8).pattern(new RegExp('^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\$%\^&\*])')).required().messages({
+    'string.min': 'Password must be at least 8 characters long',
+    'string.pattern.base': 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+    'any.required': 'Password is required'
+  })
+});
 
 /**
  * POST /api/auth/register
@@ -326,7 +402,7 @@ router.post('/reset-password', asyncHandler(async (req, res) => {
   });
 
   if (!user || !user.isActive) {
-    throw new AppError('User not found or account is deactivated', 404, 'USER_NOT_FOUND');
+    throw new AppError('User  not found or account is deactivated', 404, 'USER_NOT_FOUND');
   }
 
   // Hash new password
@@ -413,7 +489,7 @@ router.get('/me', authMiddleware, asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    data: { user }
+    data: user
   });
 }));
 
