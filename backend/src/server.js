@@ -24,12 +24,12 @@ const rateLimit = require('express-rate-limit');
 const authMiddleware = require('./middleware/auth');
 const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
-// const userRoutes = require('./routes/users'); // Uncomment if user routes are needed
+/* const userRoutes = require('./routes/users'); */
 const spaceRoutes = require('./routes/spaces');
 const bookingRoutes = require('./routes/bookings');
 const paymentRoutes = require('./routes/payments');
 const councilSpacesRoutes = require('./routes/councilSpaces');
-// const adminRoutes = require('./routes/admin'); // Uncomment if admin routes are needed
+/* const adminRoutes = require('./routes/admin'); */
 const errorLogsRouter = require('./routes/errorLogs');
 const stripeWebhookHandler = require('./routes/stripeWebhook');
 
@@ -94,14 +94,12 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authLimiter, authRoutes);
-// app.use('/api/users', authMiddleware, userRoutes); // Uncomment if user routes are needed
-app.use('/api/spaces', spaceRoutes);
-app.use('/api/bookings', authMiddleware, bookingRoutes);
-app.use('/api/payments', authMiddleware, paymentRoutes);
-app.use('/api/council-spaces', councilSpacesRoutes);
-app.use('/api/error-logs', errorLogsRouter);
-// app.use('/api/admin', authMiddleware, adminRoutes); // Uncomment if admin routes are needed
+app.use('/api/auth', authLimiter, authRoutes); // Authentication routes
+app.use('/api/spaces', spaceRoutes); // Parking spaces routes
+app.use('/api/bookings', authMiddleware, bookingRoutes); // Booking routes
+app.use('/api/payments', authMiddleware, paymentRoutes); // Payment routes
+app.use('/api/council-spaces', councilSpacesRoutes); // Council spaces routes
+app.use('/api/error-logs', errorLogsRouter); // Error logs routes
 
 // Stripe webhook handler (must be before other payment routes to handle raw body)
 app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeWebhookHandler);
@@ -110,7 +108,7 @@ app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stri
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`,
+    message: 'Route ' + req.originalUrl + ' not found',
     timestamp: new Date().toISOString()
   });
 });
@@ -131,14 +129,12 @@ process.on('SIGINT', () => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`
-🚀 EasyParkNow Backend Server Started!
-📍 Environment: ${process.env.NODE_ENV || 'development'}
-🌐 Server running on port ${PORT}
-📊 Health check: http://localhost:${PORT}/health
-📚 API base URL: http://localhost:${PORT}/api
-⏰ Started at: ${new Date().toISOString()}
-  `);
+  console.log('EasyParkNow Backend Server Started!');
+  console.log('Environment: ' + (process.env.NODE_ENV || 'development'));
+  console.log('Server running on port ' + PORT);
+  console.log('Health check: http://localhost:' + PORT + '/health');
+  console.log('API base URL: http://localhost:' + PORT + '/api');
+  console.log('Started at: ' + new Date().toISOString());
 });
 
 module.exports = app;
